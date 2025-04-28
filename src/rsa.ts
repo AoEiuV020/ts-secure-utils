@@ -1,4 +1,4 @@
-import { Base64 } from "./base64.js";
+import { Base64 } from "./base64";
 
 /**
  * 私钥是pkcs1, 公钥是pkcs8,
@@ -10,8 +10,28 @@ export class RSA {
 
   private constructor() {}
 
-  static genKeyPair(options?: { keySize?: number }): RsaKeyPair {
-    throw new Error("Not implemented");
+  static async genKeyPair(keySize: number = 2048): Promise<RsaKeyPair> {
+    const keyPair = await crypto.subtle.generateKey(
+      {
+        name: "RSA-PSS",
+        modulusLength: keySize,
+        publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+        hash: "SHA-256",
+      },
+      true,
+      ["sign", "verify"]
+    );
+
+    const publicKey = await crypto.subtle.exportKey("spki", keyPair.publicKey);
+    const privateKey = await crypto.subtle.exportKey(
+      "pkcs8",
+      keyPair.privateKey
+    );
+
+    return new RsaKeyPair(
+      new Uint8Array(publicKey),
+      new Uint8Array(privateKey)
+    );
   }
 
   static extractPublicKey(privateKey: Uint8Array): Uint8Array {

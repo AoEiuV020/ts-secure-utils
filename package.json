@@ -2,7 +2,7 @@
   "name": "ts-secure-utils",
   "version": "1.0.0",
   "description": "ts封装测试加密库，",
-  "main": "index.js",
+  "main": "index.ts",
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",

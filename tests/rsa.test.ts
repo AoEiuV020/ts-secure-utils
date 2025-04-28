@@ -1,8 +1,8 @@
 import { Base64, RSA, RsaKeyPair } from "..";
 
 describe("RSA Tests", () => {
-  test("genKeyPair should generate valid key pair", () => {
-    const pair = RSA.genKeyPair();
+  test("genKeyPair should generate valid key pair", async () => {
+    const pair = await RSA.genKeyPair();
     console.log(pair.getPublicKeyBase64());
     console.log(pair.getPrivateKeyBase64());
 

@@ -40,7 +40,13 @@ export class RSA {
   }
 
   static extractPublicKey(privateKey: Uint8Array): Uint8Array {
-    throw new Error("Not implemented");
+    const key = forge.pki.privateKeyFromAsn1(
+      forge.asn1.fromDer(BinString.toString(privateKey))
+    );
+    const publicKey = forge.pki.rsa.setPublicKey(key.n, key.e);
+    return BinString.toByteArray(
+      forge.asn1.toDer(forge.pki.publicKeyToAsn1(publicKey)).getBytes()
+    );
   }
 
   static async encryptBase64(

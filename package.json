@@ -4,6 +4,7 @@
   "description": "ts封装测试加密库，",
   "main": "./dist/index.js",
   "scripts": {
+    "build": "tsc",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"

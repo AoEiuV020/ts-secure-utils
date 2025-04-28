@@ -1,4 +1,4 @@
-const { RSA, RsaKeyPair, Base64, BinString } = require(".");
+const { RSA } = require(".");
 const main = async () => {
   const pair = await RSA.genKeyPair();
   console.log(pair.getPublicKeyBase64());

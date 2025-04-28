@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test ts-secure-utils</title>
+  </head>
+  <body>
+    <h1>Testing ts-secure-utils in browser</h1>
+    <script src="dist/bundle.js"></script>
+    <script>
+      const { RSA } = TsSecureUtils;
+      const main = async () => {
+        const pair = await RSA.genKeyPair();
+        console.log(pair.getPublicKeyBase64());
+        console.log(pair.getPrivateKeyBase64());
+      };
+      main();
+    </script>
+  </body>
+</html>

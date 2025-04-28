@@ -24,6 +24,13 @@ describe("RSA Tests", () => {
     expect(new TextDecoder().decode(decrypted)).toBe(content);
   });
 
+  test("pkcs1 to 8", async () => {
+    const pkcs1 = keyPairPkcs1.privateKey;
+    console.log(Base64.encode(pkcs1));
+    const pkcs8 = RSA._convertPkcs1ToPkcs8(pkcs1);
+    console.log(Base64.encode(pkcs8));
+  });
+
   test("pkcs1 key should work", async () => {
     const encrypted = await RSA.encryptBase64(
       new TextEncoder().encode(content),

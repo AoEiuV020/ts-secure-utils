@@ -190,40 +190,43 @@ export class RSA {
   private static _convertPkcs8ToPkcs1(pkcs8Bytes: Uint8Array): Uint8Array {
     return pkcs8Bytes.slice(26, pkcs8Bytes.length);
   }
-
-  private static _convertPkcs1ToPkcs8(pkcs1Bytes: Uint8Array): Uint8Array {
+  static _convertPkcs1ToPkcs8(pkcs1Bytes: Uint8Array): Uint8Array {
     const pkcs1Length = pkcs1Bytes.length;
     const totalLength = pkcs1Length + 22;
 
+    // 构造 PKCS#8 Header
     const pkcs8Header = new Uint8Array([
       0x30,
+      0x82,
       (totalLength >> 8) & 0xff,
-      totalLength & 0xff, // Sequence + total length
+      totalLength & 0xff, // SEQUENCE + totalLength
       0x02,
       0x01,
-      0x00, // Integer (0)
+      0x00, // INTEGER (0)
       0x30,
       0x0d,
       0x06,
-      0x09,
+      0x09, // SEQUENCE (OID 的容器)
       0x2a,
       0x86,
       0x48,
-      0x86,
+      0x86, // OID: 1.2.840.113549.1.1.1
       0xf7,
       0x0d,
       0x01,
       0x01,
       0x01,
       0x05,
-      0x00, // Sequence: 1.2.840.113549.1.1.1, NULL
-      0x04,
-      (pkcs1Length >> 8) & 0xff,
-      pkcs1Length & 0xff, // Octet string + length
+      0x00, // NULL
+      0x04, // OCTET STRING
+      0x82,
+      (pkcs1Length >> 8) & 0xff, // OCTET STRING 长度高位
+      pkcs1Length & 0xff, // OCTET STRING 长度低位
     ]);
 
+    // 合并 Header 和 PKCS#1 数据
     const result = new Uint8Array(pkcs8Header.length + pkcs1Bytes.length);
-    result.set(pkcs8Header);
+    result.set(pkcs8Header, 0);
     result.set(pkcs1Bytes, pkcs8Header.length);
     return result;
   }

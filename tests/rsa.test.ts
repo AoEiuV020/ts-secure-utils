@@ -1,4 +1,4 @@
-import { Base64, RSA, RsaKeyPair } from "..";
+import { Base64, RSA, RsaKeyPair } from "../src";
 
 describe("RSA Tests", () => {
   test("genKeyPair should generate valid key pair", async () => {

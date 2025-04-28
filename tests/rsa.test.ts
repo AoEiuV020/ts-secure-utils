@@ -11,37 +11,43 @@ describe("RSA Tests", () => {
     expect(Base64.decode(pair.getPublicKeyBase64())).toEqual(pair.publicKey);
   });
 
-  test("publicEncrypt/decrypt should work", () => {
-    const encrypted = RSA.encryptBase64(
+  test("publicEncrypt/decrypt should work", async () => {
+    const encrypted = await RSA.encryptBase64(
       new TextEncoder().encode(content),
       keyPair.publicKey
     );
-    const decrypted = RSA.decryptFromBase64(encrypted, keyPair.privateKey);
+    const decrypted = await RSA.decryptFromBase64(
+      encrypted,
+      keyPair.privateKey
+    );
 
     expect(new TextDecoder().decode(decrypted)).toBe(content);
   });
 
-  test("pkcs1 key should work", () => {
-    const encrypted = RSA.encryptBase64(
+  test("pkcs1 key should work", async () => {
+    const encrypted = await RSA.encryptBase64(
       new TextEncoder().encode(content),
       keyPairPkcs1.publicKey
     );
-    const decrypted = RSA.decryptFromBase64(encrypted, keyPairPkcs1.privateKey);
+    const decrypted = await RSA.decryptFromBase64(
+      encrypted,
+      keyPairPkcs1.privateKey
+    );
 
     expect(new TextDecoder().decode(decrypted)).toBe(content);
   });
 
-  test("sign and verify should work", () => {
-    const signature = RSA.signBase64(content, keyPair.privateKey);
+  test("sign and verify should work", async () => {
+    const signature = await RSA.signBase64(content, keyPair.privateKey);
     console.log(signature);
-    expect(RSA.verifyFromBase64(content, keyPair.publicKey, signature)).toBe(
-      true
-    );
+    expect(
+      await RSA.verifyFromBase64(content, keyPair.publicKey, signature)
+    ).toBe(true);
   });
 
-  test("verify with wrong content should fail", () => {
+  test("verify with wrong content should fail", async () => {
     expect(
-      RSA.verify(
+      await RSA.verify(
         new TextEncoder().encode("wrong content"),
         keyPair.publicKey,
         signRaw
@@ -49,46 +55,46 @@ describe("RSA Tests", () => {
     ).toBe(false);
   });
 
-  test("pkcs1 key sign and verify should work", () => {
-    const signature = RSA.signBase64(content, keyPairPkcs1.privateKey);
+  test("pkcs1 key sign and verify should work", async () => {
+    const signature = await RSA.signBase64(content, keyPairPkcs1.privateKey);
     expect(
-      RSA.verifyFromBase64(content, keyPairPkcs1.publicKey, signature)
+      await RSA.verifyFromBase64(content, keyPairPkcs1.publicKey, signature)
     ).toBe(true);
   });
 
-  test("precomputed encryption should match", () => {
-    const encrypted = RSA.encrypt(contentRaw, keyPair.publicKey);
+  test("precomputed encryption should match", async () => {
+    const encrypted = await RSA.encrypt(contentRaw, keyPair.publicKey);
     console.log(Base64.encode(encrypted));
     // RSA/ECB/PKCS1Padding 每次加密都不同，所以这里不匹配
     expect(encrypted).not.toEqual(encryptedRaw);
   });
 
-  test("precomputed decryption should match", () => {
-    const decrypted = RSA.encrypt(encryptedRaw, keyPairPkcs1.privateKey);
+  test("precomputed decryption should match", async () => {
+    const decrypted = await RSA.encrypt(encryptedRaw, keyPairPkcs1.privateKey);
     expect(decrypted).toEqual(contentRaw);
   });
 
-  test("precomputed signature should match", () => {
-    const signed = RSA.sign(contentRaw, keyPair.privateKey);
+  test("precomputed signature should match", async () => {
+    const signed = await RSA.sign(contentRaw, keyPair.privateKey);
     console.log(Base64.encode(signed));
     expect(signed).toEqual(signRaw);
   });
 
-  test("precomputed signature should verify", () => {
-    expect(RSA.verify(contentRaw, keyPair.publicKey, signRaw)).toBe(true);
+  test("precomputed signature should verify", async () => {
+    expect(await RSA.verify(contentRaw, keyPair.publicKey, signRaw)).toBe(true);
   });
 
-  test("precomputed signature should match sha1", () => {
-    const signed = RSA.sign(contentRaw, keyPairPkcs1.privateKey, {
+  test("precomputed signature should match sha1", async () => {
+    const signed = await RSA.sign(contentRaw, keyPairPkcs1.privateKey, {
       algorithm: "SHA-1/RSA",
     });
     console.log(Base64.encode(signed));
     expect(signed).toEqual(signRawSha1);
   });
 
-  test("precomputed signature should verify sha1", () => {
+  test("precomputed signature should verify sha1", async () => {
     expect(
-      RSA.verify(contentRaw, keyPairPkcs1.publicKey, signRawSha1, {
+      await RSA.verify(contentRaw, keyPairPkcs1.publicKey, signRawSha1, {
         algorithm: "SHA-1/RSA",
       })
     ).toBe(true);

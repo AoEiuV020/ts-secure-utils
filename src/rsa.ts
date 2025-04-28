@@ -30,7 +30,7 @@ export class RSA {
 
     return new RsaKeyPair(
       new Uint8Array(publicKey),
-      RSA._convertPkcs8ToPkcs1(new Uint8Array(privateKey)),
+      RSA._convertPkcs8ToPkcs1(new Uint8Array(privateKey))
     );
   }
 
@@ -38,72 +38,153 @@ export class RSA {
     throw new Error("Not implemented");
   }
 
-  static encryptBase64(data: Uint8Array, publicKey: Uint8Array): string {
-    throw new Error("Not implemented");
+  static async encryptBase64(
+    data: Uint8Array,
+    publicKey: Uint8Array
+  ): Promise<string> {
+    const encrypted = await RSA.encrypt(data, publicKey);
+    return Base64.encode(encrypted);
   }
 
-  static encrypt(data: Uint8Array, publicKey: Uint8Array): Uint8Array {
-    throw new Error("Not implemented");
+  static async encrypt(
+    data: Uint8Array,
+    publicKey: Uint8Array
+  ): Promise<Uint8Array> {
+    const key = await RSA._getRsaPublicKey(publicKey);
+    return RSA._processRSA(data, true, key);
   }
 
-  static decryptFromBase64(
+  static async decryptFromBase64(
     encrypted: string,
     privateKey: Uint8Array
-  ): Uint8Array {
-    throw new Error("Not implemented");
+  ): Promise<Uint8Array> {
+    const encryptedData = Base64.decode(encrypted);
+    return RSA.decrypt(encryptedData, privateKey);
   }
 
-  static decrypt(
+  static async decrypt(
     encryptedData: Uint8Array,
     privateKey: Uint8Array
-  ): Uint8Array {
-    throw new Error("Not implemented");
+  ): Promise<Uint8Array> {
+    const key = await RSA._getRsaPrivateKey(privateKey);
+    return RSA._processRSA(encryptedData, false, key);
   }
 
-  static signBase64(data: string, privateKey: Uint8Array): string {
-    throw new Error("Not implemented");
+  static async signBase64(
+    data: string,
+    privateKey: Uint8Array
+  ): Promise<string> {
+    const signature = await RSA.sign(
+      new TextEncoder().encode(data),
+      privateKey
+    );
+    return Base64.encode(signature);
   }
 
-  static sign(
+  static async sign(
     data: Uint8Array,
     privateKey: Uint8Array,
     options?: { algorithm?: string }
-  ): Uint8Array {
-    throw new Error("Not implemented");
+  ): Promise<Uint8Array> {
+    const key = await RSA._getRsaPrivateKey(privateKey);
+    const signature = await crypto.subtle.sign(
+      {
+        name: "RSA-PSS",
+        saltLength: 32,
+      },
+      key,
+      data
+    );
+    return new Uint8Array(signature);
   }
 
-  static verifyFromBase64(
+  static async verifyFromBase64(
     data: string,
     publicKey: Uint8Array,
     signature: string
-  ): boolean {
-    throw new Error("Not implemented");
+  ): Promise<boolean> {
+    return RSA.verify(
+      new TextEncoder().encode(data),
+      publicKey,
+      Base64.decode(signature)
+    );
   }
 
-  static verify(
+  static async verify(
     data: Uint8Array,
     publicKey: Uint8Array,
     signature: Uint8Array,
     options?: { algorithm?: string }
-  ): boolean {
-    throw new Error("Not implemented");
+  ): Promise<boolean> {
+    const key = await RSA._getRsaPublicKey(publicKey);
+    return crypto.subtle.verify(
+      {
+        name: "RSA-PSS",
+        saltLength: 32,
+      },
+      key,
+      signature,
+      data
+    );
   }
 
   // 私有辅助方法 - 在 TypeScript 中通常不暴露这些方法
   private static _getRsaPublicKey(publicKey: Uint8Array): any {
-    throw new Error("Not implemented");
+    return crypto.subtle.importKey(
+      "spki",
+      publicKey,
+      {
+        name: "RSA-OAEP",
+        hash: "SHA-256",
+      },
+      true,
+      ["encrypt"]
+    );
   }
 
-  private static _getRsaPrivateKey(privateKey: Uint8Array): any {
-    throw new Error("Not implemented");
+  private static async _getRsaPrivateKey(privateKey: Uint8Array): Promise<any> {
+    try {
+      const convertedKey = RSA._convertPkcs1ToPkcs8(privateKey);
+      return await crypto.subtle.importKey(
+        "pkcs8",
+        convertedKey,
+        {
+          name: "RSA-OAEP",
+          hash: "SHA-256",
+        },
+        true,
+        ["decrypt"]
+      );
+    } catch (error) {
+      const convertedKey = privateKey;
+      return await crypto.subtle.importKey(
+        "pkcs8",
+        convertedKey,
+        {
+          name: "RSA-OAEP",
+          hash: "SHA-256",
+        },
+        true,
+        ["decrypt"]
+      );
+    }
   }
 
-  private static _processRSA(
+  private static async _processRSA(
     data: Uint8Array,
     isEncrypt: boolean,
     key: any
-  ): Uint8Array {
-    throw new Error("Not implemented");
+  ): Promise<Uint8Array> {
+    const algorithm = {
+      name: "RSA-OAEP",
+      hash: "SHA-256",
+    };
+
+    const result = await (isEncrypt
+      ? crypto.subtle.encrypt(algorithm, key, data)
+      : crypto.subtle.decrypt(algorithm, key, data));
+
+    return new Uint8Array(result);
   }
 
   private static _convertPkcs8ToPkcs1(pkcs8Bytes: Uint8Array): Uint8Array {
@@ -118,17 +199,19 @@ export class RSA {
       0x30,
       (totalLength >> 8) & 0xff,
       totalLength & 0xff, // Sequence + total length
-      0x02, 0x01, 0x00, // Integer (0)
+      0x02,
+      0x01,
+      0x00, // Integer (0)
       0x30,
-      0x0D,
+      0x0d,
       0x06,
       0x09,
-      0x2A,
+      0x2a,
       0x86,
       0x48,
       0x86,
-      0xF7,
-      0x0D,
+      0xf7,
+      0x0d,
       0x01,
       0x01,
       0x01,

@@ -1,6 +1,6 @@
 
 describe('Example Test Suite', () => {
-  test('should pass', () => {
+  it('should pass', () => {
     console.log('hello world');
     expect(1 + 1).toBe(2);
   });

@@ -134,14 +134,17 @@ export class RSA {
       "spki",
       publicKey,
       {
-        name: "RSA-OAEP",
+        name: "RSA-PSS",
         hash: "SHA-256",
       },
       true,
-      ["encrypt"]
+      ["verify"]
     );
   }
 
+  /**
+   * https://developer.mozilla.org/zh-CN/docs/Web/API/SubtleCrypto/importKey
+   */
   private static async _getRsaPrivateKey(privateKey: Uint8Array): Promise<any> {
     try {
       const convertedKey = RSA._convertPkcs1ToPkcs8(privateKey);
@@ -149,11 +152,11 @@ export class RSA {
         "pkcs8",
         convertedKey,
         {
-          name: "RSA-OAEP",
+          name: "RSA-PSS",
           hash: "SHA-256",
         },
         true,
-        ["decrypt"]
+        ["sign"]
       );
     } catch (error) {
       const convertedKey = privateKey;
@@ -161,11 +164,11 @@ export class RSA {
         "pkcs8",
         convertedKey,
         {
-          name: "RSA-OAEP",
+          name: "RSA-PSS",
           hash: "SHA-256",
         },
         true,
-        ["decrypt"]
+        ["sign"]
       );
     }
   }

@@ -1,4 +1,6 @@
 import { Base64 } from "./base64";
+import forge from "node-forge";
+import { BinString } from "./bin";
 
 /**
  * 私钥是pkcs1, 公钥是pkcs8,
@@ -9,6 +11,7 @@ export class RSA {
   private static readonly _signAlgorithmName = "RSASSA-PKCS1-v1_5";
   private static readonly _signAlgorithmHash = "SHA-256";
   private static readonly _signAlgorithmHashSha1 = "SHA-1";
+  private static readonly _encryptAlgorithm = "RSAES-PKCS1-V1_5";
 
   private constructor() {}
 
@@ -52,8 +55,14 @@ export class RSA {
     data: Uint8Array,
     publicKey: Uint8Array
   ): Promise<Uint8Array> {
-    const key = await RSA._getRsaPublicKeyForEncrypt(publicKey);
-    return RSA._processRSA(data, true, key);
+    const key = forge.pki.publicKeyFromAsn1(
+      forge.asn1.fromDer(BinString.toString(publicKey))
+    );
+    const encrypted = key.encrypt(
+      BinString.toString(data),
+      RSA._encryptAlgorithm
+    );
+    return BinString.toByteArray(encrypted);
   }
 
   static async decryptFromBase64(
@@ -68,8 +77,14 @@ export class RSA {
     encryptedData: Uint8Array,
     privateKey: Uint8Array
   ): Promise<Uint8Array> {
-    const key = await RSA._getRsaPrivateKeyForDecrypt(privateKey);
-    return RSA._processRSA(encryptedData, false, key);
+    const key = forge.pki.privateKeyFromAsn1(
+      forge.asn1.fromDer(BinString.toString(privateKey))
+    );
+    const decrypted = key.decrypt(
+      BinString.toString(encryptedData),
+      RSA._encryptAlgorithm
+    );
+    return BinString.toByteArray(decrypted);
   }
 
   static async signBase64(

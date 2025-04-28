@@ -16,6 +16,7 @@ describe("RSA Tests", () => {
       new TextEncoder().encode(content),
       keyPair.publicKey
     );
+    console.log(encrypted);
     const decrypted = await RSA.decryptFromBase64(
       encrypted,
       keyPair.privateKey

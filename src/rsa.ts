@@ -30,7 +30,7 @@ export class RSA {
 
     return new RsaKeyPair(
       new Uint8Array(publicKey),
-      new Uint8Array(privateKey)
+      RSA._convertPkcs8ToPkcs1(new Uint8Array(privateKey)),
     );
   }
 
@@ -107,11 +107,42 @@ export class RSA {
   }
 
   private static _convertPkcs8ToPkcs1(pkcs8Bytes: Uint8Array): Uint8Array {
-    throw new Error("Not implemented");
+    return pkcs8Bytes.slice(26, pkcs8Bytes.length);
   }
 
   private static _convertPkcs1ToPkcs8(pkcs1Bytes: Uint8Array): Uint8Array {
-    throw new Error("Not implemented");
+    const pkcs1Length = pkcs1Bytes.length;
+    const totalLength = pkcs1Length + 22;
+
+    const pkcs8Header = new Uint8Array([
+      0x30,
+      (totalLength >> 8) & 0xff,
+      totalLength & 0xff, // Sequence + total length
+      0x02, 0x01, 0x00, // Integer (0)
+      0x30,
+      0x0D,
+      0x06,
+      0x09,
+      0x2A,
+      0x86,
+      0x48,
+      0x86,
+      0xF7,
+      0x0D,
+      0x01,
+      0x01,
+      0x01,
+      0x05,
+      0x00, // Sequence: 1.2.840.113549.1.1.1, NULL
+      0x04,
+      (pkcs1Length >> 8) & 0xff,
+      pkcs1Length & 0xff, // Octet string + length
+    ]);
+
+    const result = new Uint8Array(pkcs8Header.length + pkcs1Bytes.length);
+    result.set(pkcs8Header);
+    result.set(pkcs1Bytes, pkcs8Header.length);
+    return result;
   }
 }
 export class RsaKeyPair {

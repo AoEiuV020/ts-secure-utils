@@ -77,7 +77,7 @@ describe("RSA Tests", () => {
   });
 
   test("precomputed decryption should match", async () => {
-    const decrypted = await RSA.encrypt(encryptedRaw, keyPairPkcs1.privateKey);
+    const decrypted = await RSA.decrypt(encryptedRaw, keyPairPkcs1.privateKey);
     expect(decrypted).toEqual(contentRaw);
   });
 
@@ -92,18 +92,14 @@ describe("RSA Tests", () => {
   });
 
   test("precomputed signature should match sha1", async () => {
-    const signed = await RSA.sign(contentRaw, keyPairPkcs1.privateKey, {
-      algorithm: "SHA-1/RSA",
-    });
+    const signed = await RSA.signSha1(contentRaw, keyPairPkcs1.privateKey);
     console.log(Base64.encode(signed));
     expect(signed).toEqual(signRawSha1);
   });
 
   test("precomputed signature should verify sha1", async () => {
     expect(
-      await RSA.verify(contentRaw, keyPairPkcs1.publicKey, signRawSha1, {
-        algorithm: "SHA-1/RSA",
-      })
+      await RSA.verifySha1(contentRaw, keyPairPkcs1.publicKey, signRawSha1)
     ).toBe(true);
   });
 

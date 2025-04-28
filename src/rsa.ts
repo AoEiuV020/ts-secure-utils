@@ -6,17 +6,19 @@ import { Base64 } from "./base64";
  * 签名是Sha1withRSA,
  */
 export class RSA {
-  private static readonly _signAlgorithm = "SHA-256/RSA";
+  private static readonly _signAlgorithmName = "RSASSA-PKCS1-v1_5";
+  private static readonly _signAlgorithmHash = "SHA-256";
+  private static readonly _signAlgorithmHashSha1 = "SHA-1";
 
   private constructor() {}
 
   static async genKeyPair(keySize: number = 2048): Promise<RsaKeyPair> {
     const keyPair = await crypto.subtle.generateKey(
       {
-        name: "RSA-PSS",
+        name: RSA._signAlgorithmName,
         modulusLength: keySize,
         publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-        hash: "SHA-256",
+        hash: RSA._signAlgorithmHash,
       },
       true,
       ["sign", "verify"]
@@ -50,7 +52,7 @@ export class RSA {
     data: Uint8Array,
     publicKey: Uint8Array
   ): Promise<Uint8Array> {
-    const key = await RSA._getRsaPublicKey(publicKey);
+    const key = await RSA._getRsaPublicKeyForEncrypt(publicKey);
     return RSA._processRSA(data, true, key);
   }
 
@@ -66,7 +68,7 @@ export class RSA {
     encryptedData: Uint8Array,
     privateKey: Uint8Array
   ): Promise<Uint8Array> {
-    const key = await RSA._getRsaPrivateKey(privateKey);
+    const key = await RSA._getRsaPrivateKeyForDecrypt(privateKey);
     return RSA._processRSA(encryptedData, false, key);
   }
 
@@ -83,14 +85,32 @@ export class RSA {
 
   static async sign(
     data: Uint8Array,
-    privateKey: Uint8Array,
-    options?: { algorithm?: string }
+    privateKey: Uint8Array
   ): Promise<Uint8Array> {
-    const key = await RSA._getRsaPrivateKey(privateKey);
+    const key = await RSA._getRsaPrivateKeyForSign(privateKey);
     const signature = await crypto.subtle.sign(
       {
-        name: "RSA-PSS",
-        saltLength: 32,
+        name: RSA._signAlgorithmName,
+        saltLength: 0,
+      },
+      key,
+      data
+    );
+    return new Uint8Array(signature);
+  }
+
+  static async signSha1(
+    data: Uint8Array,
+    privateKey: Uint8Array
+  ): Promise<Uint8Array> {
+    const key = await RSA._getRsaPrivateKeyForSign(
+      privateKey,
+      RSA._signAlgorithmHashSha1
+    );
+    const signature = await crypto.subtle.sign(
+      {
+        name: RSA._signAlgorithmName,
+        saltLength: 0,
       },
       key,
       data
@@ -113,14 +133,33 @@ export class RSA {
   static async verify(
     data: Uint8Array,
     publicKey: Uint8Array,
-    signature: Uint8Array,
-    options?: { algorithm?: string }
+    signature: Uint8Array
   ): Promise<boolean> {
-    const key = await RSA._getRsaPublicKey(publicKey);
+    const key = await RSA._getRsaPublicKeyForVerify(publicKey);
     return crypto.subtle.verify(
       {
-        name: "RSA-PSS",
-        saltLength: 32,
+        name: RSA._signAlgorithmName,
+        saltLength: 0,
+      },
+      key,
+      signature,
+      data
+    );
+  }
+
+  static async verifySha1(
+    data: Uint8Array,
+    publicKey: Uint8Array,
+    signature: Uint8Array
+  ): Promise<boolean> {
+    const key = await RSA._getRsaPublicKeyForVerify(
+      publicKey,
+      RSA._signAlgorithmHashSha1
+    );
+    return crypto.subtle.verify(
+      {
+        name: RSA._signAlgorithmName,
+        saltLength: 0,
       },
       key,
       signature,
@@ -129,31 +168,49 @@ export class RSA {
   }
 
   // 私有辅助方法 - 在 TypeScript 中通常不暴露这些方法
-  private static _getRsaPublicKey(publicKey: Uint8Array): any {
+  private static _getRsaPublicKeyForVerify(
+    publicKey: Uint8Array,
+    algorithmHash: string = RSA._signAlgorithmHash
+  ): Promise<CryptoKey> {
     return crypto.subtle.importKey(
       "spki",
       publicKey,
       {
-        name: "RSA-PSS",
-        hash: "SHA-256",
+        name: RSA._signAlgorithmName,
+        hash: algorithmHash,
       },
       true,
       ["verify"]
     );
   }
 
-  /**
-   * https://developer.mozilla.org/zh-CN/docs/Web/API/SubtleCrypto/importKey
-   */
-  private static async _getRsaPrivateKey(privateKey: Uint8Array): Promise<any> {
+  private static _getRsaPublicKeyForEncrypt(
+    publicKey: Uint8Array
+  ): Promise<CryptoKey> {
+    return crypto.subtle.importKey(
+      "spki",
+      publicKey,
+      {
+        name: "RSA-OAEP",
+        hash: RSA._signAlgorithmHash,
+      },
+      true,
+      ["encrypt"]
+    );
+  }
+
+  private static async _getRsaPrivateKeyForSign(
+    privateKey: Uint8Array,
+    algorithmHash: string = RSA._signAlgorithmHash
+  ): Promise<CryptoKey> {
     try {
       const convertedKey = RSA._convertPkcs1ToPkcs8(privateKey);
       return await crypto.subtle.importKey(
         "pkcs8",
         convertedKey,
         {
-          name: "RSA-PSS",
-          hash: "SHA-256",
+          name: RSA._signAlgorithmName,
+          hash: algorithmHash,
         },
         true,
         ["sign"]
@@ -164,8 +221,8 @@ export class RSA {
         "pkcs8",
         convertedKey,
         {
-          name: "RSA-PSS",
-          hash: "SHA-256",
+          name: RSA._signAlgorithmName,
+          hash: algorithmHash,
         },
         true,
         ["sign"]
@@ -173,14 +230,43 @@ export class RSA {
     }
   }
 
+  private static async _getRsaPrivateKeyForDecrypt(
+    privateKey: Uint8Array
+  ): Promise<CryptoKey> {
+    try {
+      const convertedKey = RSA._convertPkcs1ToPkcs8(privateKey);
+      return await crypto.subtle.importKey(
+        "pkcs8",
+        convertedKey,
+        {
+          name: "RSA-OAEP",
+          hash: RSA._signAlgorithmHash,
+        },
+        true,
+        ["decrypt"]
+      );
+    } catch (error) {
+      const convertedKey = privateKey;
+      return await crypto.subtle.importKey(
+        "pkcs8",
+        convertedKey,
+        {
+          name: "RSA-OAEP",
+          hash: RSA._signAlgorithmHash,
+        },
+        true,
+        ["decrypt"]
+      );
+    }
+  }
+
   private static async _processRSA(
     data: Uint8Array,
     isEncrypt: boolean,
-    key: any
+    key: CryptoKey
   ): Promise<Uint8Array> {
     const algorithm = {
       name: "RSA-OAEP",
-      hash: "SHA-256",
     };
 
     const result = await (isEncrypt

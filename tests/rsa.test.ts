@@ -9,6 +9,26 @@ describe("RSA Tests", () => {
     expect(pair.publicKey).toBeDefined();
     expect(pair.privateKey).toBeDefined();
     expect(Base64.decode(pair.getPublicKeyBase64())).toEqual(pair.publicKey);
+    // 使用生成的密钥对测试加密解密
+    const testContent = "test message";
+    const testData = new TextEncoder().encode(testContent);
+    const encrypted = await RSA.encrypt(testData, pair.publicKey);
+    const decrypted = await RSA.decrypt(encrypted, pair.privateKey);
+    expect(new TextDecoder().decode(decrypted)).toBe(testContent);
+
+    // 使用生成的密钥对测试签名验签
+    const signature = await RSA.sign(testData, pair.privateKey);
+    const verified = await RSA.verify(testData, pair.publicKey, signature);
+    expect(verified).toBe(true);
+
+    // Base64格式测试
+    const encryptedBase64 = await RSA.encryptBase64(testData, pair.publicKey);
+    const decryptedFromBase64 = await RSA.decryptFromBase64(encryptedBase64, pair.privateKey);
+    expect(new TextDecoder().decode(decryptedFromBase64)).toBe(testContent);
+
+    const signatureBase64 = await RSA.signBase64(testContent, pair.privateKey);
+    const verifiedBase64 = await RSA.verifyFromBase64(testContent, pair.publicKey, signatureBase64);
+    expect(verifiedBase64).toBe(true);
   });
 
   test("publicEncrypt/decrypt should work", async () => {

@@ -1,4 +1,6 @@
 import { Base64, RSA, RsaKeyPair } from "../src";
+import { webcrypto } from 'node:crypto';
+global.crypto = webcrypto as any; // Make it available globally for tests, casting to any
 
 describe("RSA Tests", () => {
   test("genKeyPair should generate valid key pair", async () => {
@@ -124,13 +126,14 @@ describe("RSA Tests", () => {
     ).toBe(true);
   });
 
-  test("extractPublicKey should work", () => {
-    const extractedPublicKey = RSA.extractPublicKey(keyPair.privateKey);
-    expect(extractedPublicKey).toEqual(keyPair.publicKey);
+  test("extractPublicKey should work", async () => {
+    const pair = await RSA.genKeyPair();
+    const extractedPublicKey = await RSA.extractPublicKey(pair.privateKey);
+    expect(extractedPublicKey).toEqual(pair.publicKey);
   });
 
-  test("pkcs1 extractPublicKey should work", () => {
-    const extractedPublicKey = RSA.extractPublicKey(keyPairPkcs1.privateKey);
+  test("pkcs1 extractPublicKey should work", async () => {
+    const extractedPublicKey = await RSA.extractPublicKey(keyPairPkcs1.privateKey);
     expect(extractedPublicKey).toEqual(keyPairPkcs1.publicKey);
   });
 });

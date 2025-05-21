@@ -1,6 +1,6 @@
 import { Base64 } from "./base64";
-import forge from "node-forge";
-import { BinString } from "./bin";
+// import forge from "node-forge"; // Removed
+// import { BinString } from "./bin"; // Removed
 
 /**
  * 私钥是pkcs1, 公钥是pkcs8,
@@ -11,7 +11,7 @@ export class RSA {
   private static readonly _signAlgorithmName = "RSASSA-PKCS1-v1_5";
   private static readonly _signAlgorithmHash = "SHA-256";
   private static readonly _signAlgorithmHashSha1 = "SHA-1";
-  private static readonly _encryptAlgorithm = "RSAES-PKCS1-V1_5";
+  private static readonly _encryptAlgorithm = "RSAES-PKCS1-v1_5"; // Reverted
 
   private constructor() {}
 
@@ -39,14 +39,42 @@ export class RSA {
     );
   }
 
-  static extractPublicKey(privateKey: Uint8Array): Uint8Array {
-    const key = forge.pki.privateKeyFromAsn1(
-      forge.asn1.fromDer(BinString.toString(privateKey))
+  static async extractPublicKey(privateKey: Uint8Array): Promise<Uint8Array> { // privateKey is PKCS#1
+    // Convert PKCS#1 private key to PKCS#8 for Web Crypto API
+    const privateKeyPkcs8 = RSA._convertPkcs1ToPkcs8(privateKey);
+
+    // Import the PKCS#8 private key.
+    // Use RSASSA-PKCS1-v1_5 as it's a common algorithm for RSA private keys.
+    // The private key itself doesn't need to be extractable for this operation.
+    // Usage 'sign' implies it's part of a key pair from which a public key can be derived.
+    // However, to export the public key, the private key must be imported.
+    // The Web Crypto API derives the public key from the private key, so the private key's
+    // usages are not directly relevant to *what* public key is derived, but rather
+    // that a private key is available to derive *a* public key from.
+    // For the purpose of deriving a public key, no specific key usage is strictly needed for the private key
+    // beyond being a valid key from which a public key can be derived.
+    // However, "sign" is a common usage for private keys and is accepted.
+    // The important part is that `importKey` for a private key allows `exportKey` to get its public part.
+    const cryptoPrivateKey = await crypto.subtle.importKey(
+      "pkcs8",
+      privateKeyPkcs8,
+      {
+        name: "RSASSA-PKCS1-v1_5", // Reverted to RSASSA-PKCS1-v1_5 for public key export
+        hash: { name: "SHA-256" },   // Hash algorithm associated with the key
+      },
+      true, // extractable: true
+      ["sign"] // keyUsages: "sign" for RSASSA-PKCS1-v1_5
     );
-    const publicKey = forge.pki.rsa.setPublicKey(key.n, key.e);
-    return BinString.toByteArray(
-      forge.asn1.toDer(forge.pki.publicKeyToAsn1(publicKey)).getBytes()
+
+    // Export the corresponding public key in SPKI format.
+    // This works because the CryptoKey object for the private key contains enough information
+    // for the Web Crypto API to derive and then export the public key.
+    const publicKeySpkiBuffer = await crypto.subtle.exportKey(
+      "spki",
+      cryptoPrivateKey // Pass the imported *private* key object
     );
+
+    return new Uint8Array(publicKeySpkiBuffer);
   }
 
   static async encryptBase64(
@@ -61,14 +89,25 @@ export class RSA {
     data: Uint8Array,
     publicKey: Uint8Array
   ): Promise<Uint8Array> {
-    const key = forge.pki.publicKeyFromAsn1(
-      forge.asn1.fromDer(BinString.toString(publicKey))
+    const cryptoKey = await crypto.subtle.importKey(
+      "spki", // SubjectPublicKeyInfo format
+      publicKey,
+      {
+        name: "RSASSA-PKCS1-v1_5", // Use RSASSA-PKCS1-v1_5 for import
+        hash: { name: "SHA-256" }, // Standard hash
+      },
+      true, // extractable
+      ["encrypt"] // key usages
     );
-    const encrypted = key.encrypt(
-      BinString.toString(data),
-      RSA._encryptAlgorithm
+
+    const encryptedBuffer = await crypto.subtle.encrypt(
+      {
+        name: RSA._encryptAlgorithm, // Now RSA-OAEP
+      },
+      cryptoKey,
+      data // data as Uint8Array
     );
-    return BinString.toByteArray(encrypted);
+    return new Uint8Array(encryptedBuffer);
   }
 
   static async decryptFromBase64(
@@ -81,16 +120,55 @@ export class RSA {
 
   static async decrypt(
     encryptedData: Uint8Array,
-    privateKey: Uint8Array
+    privateKeyInput: Uint8Array // This can be PKCS#1 or PKCS#8
   ): Promise<Uint8Array> {
-    const key = forge.pki.privateKeyFromAsn1(
-      forge.asn1.fromDer(BinString.toString(privateKey))
+    let cryptoKey: CryptoKey;
+
+    try {
+      // Attempt 1: Assume privateKeyInput is already a valid PKCS#8 key
+      cryptoKey = await crypto.subtle.importKey(
+        "pkcs8",
+        privateKeyInput, // Use directly
+        {
+          name: "RSASSA-PKCS1-v1_5", // Use RSASSA-PKCS1-v1_5 for import
+          hash: { name: "SHA-256" }, // Standard hash
+        },
+        true, // extractable
+        ["decrypt"]
+      );
+    } catch (error1) {
+      // Attempt 2: If import failed, assume privateKeyInput was PKCS#1. Convert it to PKCS#8 and try importing again.
+      try {
+        const privateKeyPkcs8Converted = RSA._convertPkcs1ToPkcs8(privateKeyInput);
+        cryptoKey = await crypto.subtle.importKey(
+          "pkcs8",
+          privateKeyPkcs8Converted,
+          {
+            name: "RSASSA-PKCS1-v1_5", // Use RSASSA-PKCS1-v1_5 for import
+            hash: { name: "SHA-256" }, // Standard hash
+          },
+          true, // extractable
+          ["decrypt"]
+        );
+      } catch (error2) {
+        const e1message = (error1 instanceof Error) ? error1.message : String(error1);
+        const e2message = (error2 instanceof Error) ? error2.message : String(error2);
+        // It's good to log the actual error objects for better debugging if needed,
+        // though the problem was accessing .message directly for the new Error string.
+        // console.error("Original import error object:", error1);
+        console.error("Error during PKCS#1 conversion/import: ", error2); // Keep existing console.error for error2
+        throw new Error(`Failed to import private key as PKCS#8 or as converted PKCS#1. Original import error: ${e1message}; Conversion import error: ${e2message}`);
+      }
+    }
+
+    const decryptedBuffer = await crypto.subtle.decrypt(
+      {
+        name: "RSAES-PKCS1-v1_5",
+      },
+      cryptoKey,
+      encryptedData
     );
-    const decrypted = key.decrypt(
-      BinString.toString(encryptedData),
-      RSA._encryptAlgorithm
-    );
-    return BinString.toByteArray(decrypted);
+    return new Uint8Array(decryptedBuffer);
   }
 
   static async signBase64(

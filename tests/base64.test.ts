@@ -4,40 +4,41 @@ import { UTF8 } from "../src/utf8";
 describe("Base64 Tests", () => {
   // 基本编解码测试
   test("encode and decode should handle basic strings", () => {
-    const testData = UTF8.encode("Hello, World!");
-    const encoded = Base64.encode(testData);
+    // 使用新的encodeString函数
+    const encoded = Base64.encodeString("Hello, World!");
     expect(encoded).toBe("SGVsbG8sIFdvcmxkIQ==");
     
-    const decoded = Base64.decode(encoded);
-    expect(UTF8.decode(decoded)).toBe("Hello, World!");
+    // 使用新的decodeToString函数
+    const decoded = Base64.decodeToString(encoded);
+    expect(decoded).toBe("Hello, World!");
   });
-  
-  // 空字符串测试
+    // 空字符串测试
   test("encode and decode should handle empty strings", () => {
-    const testData = UTF8.encode("");
-    const encoded = Base64.encode(testData);
+    // 使用新的encodeString函数
+    const encoded = Base64.encodeString("");
     expect(encoded).toBe("");
     
-    const decoded = Base64.decode(encoded);
-    expect(UTF8.decode(decoded)).toBe("");
+    // 使用新的decodeToString函数
+    const decoded = Base64.decodeToString(encoded);
+    expect(decoded).toBe("");
   });
-  
-  // 特殊字符测试
+    // 特殊字符测试
   test("encode and decode should handle special characters", () => {
-    const testData = UTF8.encode("!@#$%^&*()_+{}|:<>?~`-=[]\\;',./");
-    const encoded = Base64.encode(testData);
+    // 使用新的encodeString函数
+    const encoded = Base64.encodeString("!@#$%^&*()_+{}|:<>?~`-=[]\\;',./");
     
-    const decoded = Base64.decode(encoded);
-    expect(UTF8.decode(decoded)).toBe("!@#$%^&*()_+{}|:<>?~`-=[]\\;',./");
+    // 使用新的decodeToString函数
+    const decoded = Base64.decodeToString(encoded);
+    expect(decoded).toBe("!@#$%^&*()_+{}|:<>?~`-=[]\\;',./");
   });
-  
-  // 中文字符测试
+    // 中文字符测试
   test("encode and decode should handle Chinese characters", () => {
-    const testData = UTF8.encode("你好，世界");
-    const encoded = Base64.encode(testData);
+    // 使用新的encodeString函数
+    const encoded = Base64.encodeString("你好，世界");
     
-    const decoded = Base64.decode(encoded);
-    expect(UTF8.decode(decoded)).toBe("你好，世界");
+    // 使用新的decodeToString函数
+    const decoded = Base64.decodeToString(encoded);
+    expect(decoded).toBe("你好，世界");
   });
   
   // 二进制数据测试

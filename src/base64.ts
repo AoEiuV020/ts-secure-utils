@@ -1,12 +1,11 @@
-import forge from "node-forge";
-import { BinString } from "./bin";
+import { fromByteArray, toByteArray } from "base64-js";
 
 export class Base64 {
   static encode(content: Uint8Array): string {
-    return forge.util.encode64(BinString.toString(content));
+    return fromByteArray(content);
   }
 
   static decode(content: string): Uint8Array {
-    return BinString.toByteArray(forge.util.decode64(content));
+    return toByteArray(content);
   }
 }

@@ -1,5 +1,4 @@
 import { Base64 } from "../src";
-import { UTF8 } from "../src/utf8";
 
 describe("Base64 Tests", () => {
   // 基本编解码测试

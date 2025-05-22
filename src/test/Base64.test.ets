@@ -3,6 +3,21 @@ import { Base64 } from '../base64';
 
 export default function base64Test() {
   describe('Base64Tests', () => {
+    // 基本编解码测试
+    it('encodeAndDecodeBasicStrings', 0, () => {
+      const testData = stringToBytes("Hello, World!");
+      const encoded = Base64.encode(testData);
+      expect(encoded).assertEqual("SGVsbG8sIFdvcmxkIQ==");
+
+    });
+    // 中文字符测试
+    it('encodeAndDecodeChineseCharacters', 0, () => {
+
+      const testData = stringToBytes("你好，世界");
+      const encoded = Base64.encode(testData);
+      expect(encoded).assertEqual("5L2g5aW977yM5LiW55WM");
+
+    });
     // 空字符串测试
     it('encodeAndDecodeEmptyStrings', 0, () => {
 
@@ -57,4 +72,15 @@ export default function base64Test() {
       }
     });
   });
+}
+function stringToBytes(str: string): Uint8Array {
+  const encodedString = encodeURIComponent(str);
+  const binaryString = unescape(encodedString);
+  const bytes = new Uint8Array(binaryString.length);
+
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  return bytes;
 }

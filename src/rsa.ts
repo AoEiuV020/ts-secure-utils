@@ -8,7 +8,6 @@ import { BinString } from "./bin";
  * 签名是Sha1withRSA,
  */
 export class RSA {
-  private static readonly _signAlgorithmName = "RSASSA-PKCS1-v1_5";
   private static readonly _signAlgorithmHash = "SHA-256";
   private static readonly _signAlgorithmHashSha1 = "SHA-1";
   private static readonly _encryptAlgorithm = "RSAES-PKCS1-V1_5";
@@ -16,27 +15,26 @@ export class RSA {
   private constructor() {}
 
   static async genKeyPair(keySize: number = 2048): Promise<RsaKeyPair> {
-    const keyPair = await crypto.subtle.generateKey(
-      {
-        name: RSA._signAlgorithmName,
-        modulusLength: keySize,
-        publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-        hash: RSA._signAlgorithmHash,
-      },
-      true,
-      ["sign", "verify"]
-    );
-
-    const publicKey = await crypto.subtle.exportKey("spki", keyPair.publicKey);
-    const privateKey = await crypto.subtle.exportKey(
-      "pkcs8",
-      keyPair.privateKey
-    );
-
-    return new RsaKeyPair(
-      new Uint8Array(publicKey),
-      RSA._convertPkcs8ToPkcs1(new Uint8Array(privateKey))
-    );
+    return new Promise((resolve, reject) => {
+      forge.pki.rsa.generateKeyPair({ bits: keySize }, (err, keypair) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        // 导出公钥为ASN.1 DER格式
+        const publicKeyAsn1 = forge.pki.publicKeyToAsn1(keypair.publicKey);
+        const publicKeyDer = forge.asn1.toDer(publicKeyAsn1).getBytes();
+        const publicKeyBytes = BinString.toByteArray(publicKeyDer);
+        
+        // 导出私钥为PKCS#1 DER格式
+        const privateKeyAsn1 = forge.pki.privateKeyToAsn1(keypair.privateKey);
+        const privateKeyDer = forge.asn1.toDer(privateKeyAsn1).getBytes();
+        const privateKeyBytes = BinString.toByteArray(privateKeyDer);
+        
+        resolve(new RsaKeyPair(publicKeyBytes, privateKeyBytes));
+      });
+    });
   }
 
   static extractPublicKey(privateKey: Uint8Array): Uint8Array {
@@ -103,40 +101,42 @@ export class RSA {
     );
     return Base64.encode(signature);
   }
-
   static async sign(
     data: Uint8Array,
     privateKey: Uint8Array
   ): Promise<Uint8Array> {
-    const key = await RSA._getRsaPrivateKeyForSign(privateKey);
-    const signature = await crypto.subtle.sign(
-      {
-        name: RSA._signAlgorithmName,
-        saltLength: 0,
-      },
-      key,
-      data
+    const key = forge.pki.privateKeyFromAsn1(
+      forge.asn1.fromDer(BinString.toString(privateKey))
     );
-    return new Uint8Array(signature);
+    
+    // 创建数据的消息摘要
+    const md = forge.md.sha256.create();
+    md.update(BinString.toString(data));
+    
+    // 使用私钥签名消息摘要
+    const signature = key.sign(md);
+    
+    // 转换为 Uint8Array
+    return BinString.toByteArray(signature);
   }
 
   static async signSha1(
     data: Uint8Array,
     privateKey: Uint8Array
   ): Promise<Uint8Array> {
-    const key = await RSA._getRsaPrivateKeyForSign(
-      privateKey,
-      RSA._signAlgorithmHashSha1
+    const key = forge.pki.privateKeyFromAsn1(
+      forge.asn1.fromDer(BinString.toString(privateKey))
     );
-    const signature = await crypto.subtle.sign(
-      {
-        name: RSA._signAlgorithmName,
-        saltLength: 0,
-      },
-      key,
-      data
-    );
-    return new Uint8Array(signature);
+    
+    // 创建数据的SHA-1消息摘要
+    const md = forge.md.sha1.create();
+    md.update(BinString.toString(data));
+    
+    // 使用私钥签名消息摘要
+    const signature = key.sign(md);
+    
+    // 转换为 Uint8Array
+    return BinString.toByteArray(signature);
   }
 
   static async verifyFromBase64(
@@ -150,22 +150,21 @@ export class RSA {
       Base64.decode(signature)
     );
   }
-
   static async verify(
     data: Uint8Array,
     publicKey: Uint8Array,
     signature: Uint8Array
   ): Promise<boolean> {
-    const key = await RSA._getRsaPublicKeyForVerify(publicKey);
-    return crypto.subtle.verify(
-      {
-        name: RSA._signAlgorithmName,
-        saltLength: 0,
-      },
-      key,
-      signature,
-      data
+    const key = forge.pki.publicKeyFromAsn1(
+      forge.asn1.fromDer(BinString.toString(publicKey))
     );
+    
+    // 创建数据的消息摘要
+    const md = forge.md.sha256.create();
+    md.update(BinString.toString(data));
+    
+    // 验证签名
+    return key.verify(md.digest().getBytes(), BinString.toString(signature));
   }
 
   static async verifySha1(
@@ -173,129 +172,18 @@ export class RSA {
     publicKey: Uint8Array,
     signature: Uint8Array
   ): Promise<boolean> {
-    const key = await RSA._getRsaPublicKeyForVerify(
-      publicKey,
-      RSA._signAlgorithmHashSha1
+    const key = forge.pki.publicKeyFromAsn1(
+      forge.asn1.fromDer(BinString.toString(publicKey))
     );
-    return crypto.subtle.verify(
-      {
-        name: RSA._signAlgorithmName,
-        saltLength: 0,
-      },
-      key,
-      signature,
-      data
-    );
+    
+    // 创建数据的SHA-1消息摘要
+    const md = forge.md.sha1.create();
+    md.update(BinString.toString(data));
+    
+    // 验证签名
+    return key.verify(md.digest().getBytes(), BinString.toString(signature));
   }
-
-  // 私有辅助方法 - 在 TypeScript 中通常不暴露这些方法
-  private static _getRsaPublicKeyForVerify(
-    publicKey: Uint8Array,
-    algorithmHash: string = RSA._signAlgorithmHash
-  ): Promise<CryptoKey> {
-    return crypto.subtle.importKey(
-      "spki",
-      publicKey,
-      {
-        name: RSA._signAlgorithmName,
-        hash: algorithmHash,
-      },
-      true,
-      ["verify"]
-    );
-  }
-
-  private static _getRsaPublicKeyForEncrypt(
-    publicKey: Uint8Array
-  ): Promise<CryptoKey> {
-    return crypto.subtle.importKey(
-      "spki",
-      publicKey,
-      {
-        name: "RSA-OAEP",
-        hash: RSA._signAlgorithmHash,
-      },
-      true,
-      ["encrypt"]
-    );
-  }
-
-  private static async _getRsaPrivateKeyForSign(
-    privateKey: Uint8Array,
-    algorithmHash: string = RSA._signAlgorithmHash
-  ): Promise<CryptoKey> {
-    try {
-      const convertedKey = RSA._convertPkcs1ToPkcs8(privateKey);
-      return await crypto.subtle.importKey(
-        "pkcs8",
-        convertedKey,
-        {
-          name: RSA._signAlgorithmName,
-          hash: algorithmHash,
-        },
-        true,
-        ["sign"]
-      );
-    } catch (error) {
-      const convertedKey = privateKey;
-      return await crypto.subtle.importKey(
-        "pkcs8",
-        convertedKey,
-        {
-          name: RSA._signAlgorithmName,
-          hash: algorithmHash,
-        },
-        true,
-        ["sign"]
-      );
-    }
-  }
-
-  private static async _getRsaPrivateKeyForDecrypt(
-    privateKey: Uint8Array
-  ): Promise<CryptoKey> {
-    try {
-      const convertedKey = RSA._convertPkcs1ToPkcs8(privateKey);
-      return await crypto.subtle.importKey(
-        "pkcs8",
-        convertedKey,
-        {
-          name: "RSA-OAEP",
-          hash: RSA._signAlgorithmHash,
-        },
-        true,
-        ["decrypt"]
-      );
-    } catch (error) {
-      const convertedKey = privateKey;
-      return await crypto.subtle.importKey(
-        "pkcs8",
-        convertedKey,
-        {
-          name: "RSA-OAEP",
-          hash: RSA._signAlgorithmHash,
-        },
-        true,
-        ["decrypt"]
-      );
-    }
-  }
-
-  private static async _processRSA(
-    data: Uint8Array,
-    isEncrypt: boolean,
-    key: CryptoKey
-  ): Promise<Uint8Array> {
-    const algorithm = {
-      name: "RSA-OAEP",
-    };
-
-    const result = await (isEncrypt
-      ? crypto.subtle.encrypt(algorithm, key, data)
-      : crypto.subtle.decrypt(algorithm, key, data));
-
-    return new Uint8Array(result);
-  }
+  // 私有辅助方法
 
   private static _convertPkcs8ToPkcs1(pkcs8Bytes: Uint8Array): Uint8Array {
     return pkcs8Bytes.slice(26, pkcs8Bytes.length);

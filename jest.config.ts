@@ -15,6 +15,11 @@ const config: Config = {
     "!**/node_modules/**",
     "!**/vendor/**",
   ],
+  testPathIgnorePatterns: [
+    "/node_modules/",
+    "/.test",
+    "/build",
+  ],
 };
 
 export default config;

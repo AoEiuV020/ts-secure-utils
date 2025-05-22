@@ -1,0 +1,11 @@
+{
+  "name": "ts-secure-utils",
+  "version": "1.0.0",
+  "description": "ts封装测试加密库，",
+  "main": "index.ts",
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "base64-js": "^1.5.1"
+  }
+}

@@ -1,6 +1,7 @@
 import { Base64 } from "./base64";
 import forge from "node-forge";
 import { BinString } from "./bin";
+import { UTF8 } from "./utf8";
 
 /**
  * 私钥是pkcs1, 公钥是pkcs8,
@@ -96,7 +97,7 @@ export class RSA {
     privateKey: Uint8Array
   ): Promise<string> {
     const signature = await RSA.sign(
-      new TextEncoder().encode(data),
+      UTF8.encode(data),
       privateKey
     );
     return Base64.encode(signature);
@@ -145,7 +146,7 @@ export class RSA {
     signature: string
   ): Promise<boolean> {
     return RSA.verify(
-      new TextEncoder().encode(data),
+      UTF8.encode(data),
       publicKey,
       Base64.decode(signature)
     );

@@ -1,4 +1,4 @@
-import { Base64, RSA, RsaKeyPair } from "../src";
+import { Base64, RSA, RsaKeyPair, UTF8 } from "../src";
 
 describe("RSA Tests", () => {
   test("genKeyPair should generate valid key pair", async () => {
@@ -11,10 +11,10 @@ describe("RSA Tests", () => {
     expect(Base64.decode(pair.getPublicKeyBase64())).toEqual(pair.publicKey);
     // 使用生成的密钥对测试加密解密
     const testContent = "test message";
-    const testData = new TextEncoder().encode(testContent);
+    const testData = UTF8.encode(testContent);
     const encrypted = await RSA.encrypt(testData, pair.publicKey);
     const decrypted = await RSA.decrypt(encrypted, pair.privateKey);
-    expect(new TextDecoder().decode(decrypted)).toBe(testContent);
+    expect(UTF8.decode(decrypted)).toBe(testContent);
 
     // 使用生成的密钥对测试签名验签
     const signature = await RSA.sign(testData, pair.privateKey);
@@ -24,7 +24,7 @@ describe("RSA Tests", () => {
     // Base64格式测试
     const encryptedBase64 = await RSA.encryptBase64(testData, pair.publicKey);
     const decryptedFromBase64 = await RSA.decryptFromBase64(encryptedBase64, pair.privateKey);
-    expect(new TextDecoder().decode(decryptedFromBase64)).toBe(testContent);
+    expect(UTF8.decode(decryptedFromBase64)).toBe(testContent);
 
     const signatureBase64 = await RSA.signBase64(testContent, pair.privateKey);
     const verifiedBase64 = await RSA.verifyFromBase64(testContent, pair.publicKey, signatureBase64);
@@ -33,7 +33,7 @@ describe("RSA Tests", () => {
 
   test("publicEncrypt/decrypt should work", async () => {
     const encrypted = await RSA.encryptBase64(
-      new TextEncoder().encode(content),
+      UTF8.encode(content),
       keyPair.publicKey
     );
     console.log(encrypted);
@@ -42,7 +42,7 @@ describe("RSA Tests", () => {
       keyPair.privateKey
     );
 
-    expect(new TextDecoder().decode(decrypted)).toBe(content);
+    expect(UTF8.decode(decrypted)).toBe(content);
   });
 
   test("pkcs1 to 8", async () => {
@@ -54,7 +54,7 @@ describe("RSA Tests", () => {
 
   test("pkcs1 key should work", async () => {
     const encrypted = await RSA.encryptBase64(
-      new TextEncoder().encode(content),
+      UTF8.encode(content),
       keyPairPkcs1.publicKey
     );
     const decrypted = await RSA.decryptFromBase64(
@@ -62,7 +62,7 @@ describe("RSA Tests", () => {
       keyPairPkcs1.privateKey
     );
 
-    expect(new TextDecoder().decode(decrypted)).toBe(content);
+    expect(UTF8.decode(decrypted)).toBe(content);
   });
 
   test("sign and verify should work", async () => {
@@ -76,7 +76,7 @@ describe("RSA Tests", () => {
   test("verify with wrong content should fail", async () => {
     expect(
       await RSA.verify(
-        new TextEncoder().encode("wrong content"),
+        UTF8.encode("wrong content"),
         keyPair.publicKey,
         signRaw
       )

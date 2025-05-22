@@ -5,6 +5,7 @@ import hexTest from './Hex.test';
 import md5Test from './MD5.test';
 import aesTest from './AES.test';
 import utf8Test from './UTF8.test';
+import rsaTest from './RSA.test';
 
 export default function testsuite() {
   localUnitTest();
@@ -14,4 +15,5 @@ export default function testsuite() {
   hexTest();
   md5Test();
   aesTest();
+  rsaTest();
 }

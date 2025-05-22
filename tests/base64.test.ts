@@ -1,42 +1,43 @@
 import { Base64 } from "../src";
+import { UTF8 } from "../src/utf8";
 
 describe("Base64 Tests", () => {
   // 基本编解码测试
   test("encode and decode should handle basic strings", () => {
-    const testData = new TextEncoder().encode("Hello, World!");
+    const testData = UTF8.encode("Hello, World!");
     const encoded = Base64.encode(testData);
     expect(encoded).toBe("SGVsbG8sIFdvcmxkIQ==");
     
     const decoded = Base64.decode(encoded);
-    expect(new TextDecoder().decode(decoded)).toBe("Hello, World!");
+    expect(UTF8.decode(decoded)).toBe("Hello, World!");
   });
   
   // 空字符串测试
   test("encode and decode should handle empty strings", () => {
-    const testData = new TextEncoder().encode("");
+    const testData = UTF8.encode("");
     const encoded = Base64.encode(testData);
     expect(encoded).toBe("");
     
     const decoded = Base64.decode(encoded);
-    expect(new TextDecoder().decode(decoded)).toBe("");
+    expect(UTF8.decode(decoded)).toBe("");
   });
   
   // 特殊字符测试
   test("encode and decode should handle special characters", () => {
-    const testData = new TextEncoder().encode("!@#$%^&*()_+{}|:<>?~`-=[]\\;',./");
+    const testData = UTF8.encode("!@#$%^&*()_+{}|:<>?~`-=[]\\;',./");
     const encoded = Base64.encode(testData);
     
     const decoded = Base64.decode(encoded);
-    expect(new TextDecoder().decode(decoded)).toBe("!@#$%^&*()_+{}|:<>?~`-=[]\\;',./");
+    expect(UTF8.decode(decoded)).toBe("!@#$%^&*()_+{}|:<>?~`-=[]\\;',./");
   });
   
   // 中文字符测试
   test("encode and decode should handle Chinese characters", () => {
-    const testData = new TextEncoder().encode("你好，世界");
+    const testData = UTF8.encode("你好，世界");
     const encoded = Base64.encode(testData);
     
     const decoded = Base64.decode(encoded);
-    expect(new TextDecoder().decode(decoded)).toBe("你好，世界");
+    expect(UTF8.decode(decoded)).toBe("你好，世界");
   });
   
   // 二进制数据测试
